@@ -45,7 +45,7 @@ async function run() {
 
         const database = client.db('useProductsDb')
         const productCategoriesCollection = database.collection('productCategories');
-        // const bookingsCollection = client.db('doctorsPortal').collection('bookings');
+        const bookingsCollection = database.collection('bookings');
         const usersCollection = database.collection('users');
         const productsCollection = database.collection('products');
         // const paymentsCollection = client.db('doctorsPortal').collection('payments');
@@ -91,27 +91,25 @@ async function run() {
         //     res.send(booking);
         // })
 
-        // app.post('/bookings', async (req, res) => {
-        //     const booking = req.body;
-        //     console.log(booking); 
-        //     const query = {
-        //         appointmentDate: booking.appointmentDate,
-        //         email: booking.email,
-        //         treatment: booking.treatment
-        //     }
+        app.post('/bookings', async (req, res) => {
+            const booking = req.body;
+            console.log(booking); 
+            const query = {
+                email: booking.email,
+                name: booking.name
+            }
 
-        //     const alreadyBooked = await bookingsCollection.find(query).toArray();
+            const alreadyBooked = await bookingsCollection.find(query).toArray();
 
-        //     if (alreadyBooked.length) {
-        //         const message = `You already have a booking on ${booking.appointmentDate}`
-        //         return res.send({ acknowledged: false, message })
-        //     }
+            if (alreadyBooked.length) {
+                const message = `You already have a booking on ${booking.name}`
+                return res.send({ acknowledged: false, message })
+            }
 
-        //     const result = await bookingsCollection.insertOne(booking);
-        //     // send email about appointment confirmation 
-        //     sendBookingEmail(booking)
-        //     res.send(result);
-        // });
+            const result = await bookingsCollection.insertOne(booking);
+          
+            res.send(result);
+        });
 
         // app.post('/create-payment-intent', async (req, res) => {
         //     const booking = req.body;
