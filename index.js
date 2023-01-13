@@ -77,8 +77,8 @@ async function run() {
     });
 
     app.get("/products", async (req, res) => {
-      //verifyJWT, verifyAdmin
-      const query = {};
+      const email = req?.query?.email;
+      const query = { email };
       const products = await productsCollection.find(query).toArray();
       res.send(products);
     });
@@ -223,7 +223,6 @@ async function run() {
       res.status(403).send({ accessToken: "" });
     });
 
-
     //Users API
     //Get All Users
     app.get("/users", async (req, res) => {
@@ -238,9 +237,9 @@ async function run() {
       const query = { _id: ObjectId(id) };
       const updatedDoc = {
         $set: {
-          isVerified: true
-        }
-      }
+          isVerified: true,
+        },
+      };
       const users = await usersCollection.updateOne(query, updatedDoc);
       res.send(users);
     });
@@ -271,6 +270,14 @@ async function run() {
       res.send({ role: user?.role });
     });
 
+    //
+    app.get("/users/isVerified/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ isVerified: user?.isVerified ? user?.isVerified : false });
+    });
+
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
@@ -287,7 +294,6 @@ async function run() {
         .toArray();
       res.send(result);
     });
-
   } finally {
   }
 }
