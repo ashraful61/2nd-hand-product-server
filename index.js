@@ -45,7 +45,7 @@ async function run() {
     const bookingsCollection = database.collection("bookings");
     const usersCollection = database.collection("users");
     const productsCollection = database.collection("products");
-    // const paymentsCollection = client.db('doctorsPortal').collection('payments');
+    const paymentsCollection = database.collection("payments");
 
     // NOTE: make sure you use verifyAdmin after verifyJWT
     const verifyAdmin = async (req, res, next) => {
@@ -86,11 +86,11 @@ async function run() {
     app.get("/products/advertise/:email", async (req, res) => {
       //verifyJWT, verifyAdmin
       const email = req.params.email;
-      console.log(email);
+
       const query = {
         email: email,
         isAdvertised: true,
-        // sellStatus: "available",
+        sellStatus: "available",
       };
 
       const products = await productsCollection.find(query).toArray();
@@ -119,14 +119,13 @@ async function run() {
         },
       };
       const result = await productsCollection.updateOne(query, updatedDoc);
-      console.log(result);
+
       res.send(result);
     });
 
     app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const decodedEmail = req.decoded.email;
-
       if (email !== decodedEmail) {
         return res.status(403).send({ message: "forbidden access" });
       }
@@ -145,7 +144,7 @@ async function run() {
 
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
-      console.log(booking);
+
       const query = {
         email: booking.email,
         name: booking.name,
@@ -181,6 +180,7 @@ async function run() {
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const result = await paymentsCollection.insertOne(payment);
+
       const id = payment.bookingId;
       const filter = { _id: ObjectId(id) };
       const updatedDoc = {
@@ -193,43 +193,82 @@ async function run() {
         filter,
         updatedDoc
       );
+
+      const productId = payment.productId;
+      const filterProduct = { _id: ObjectId(productId) };
+      const updatedProduct = {
+        $set: {
+          sellStatus: "sold",
+        },
+      };
+      const updatedProductResult = await productsCollection.updateOne(
+        filterProduct,
+        updatedProduct
+      );
+
       res.send(result);
     });
 
+    //Jwt authentication
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
-          expiresIn: "1h",
+          expiresIn: "10d",
         });
         return res.send({ accessToken: token });
       }
       res.status(403).send({ accessToken: "" });
     });
 
+
+    //Users API
+    //Get All Users
     app.get("/users", async (req, res) => {
       const query = {};
       const users = await usersCollection.find(query).toArray();
       res.send(users);
     });
 
-    //get user role by email
+    //Update user by Id
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          isVerified: true
+        }
+      }
+      const users = await usersCollection.updateOne(query, updatedDoc);
+      res.send(users);
+    });
+
+    //Add users
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+
+      // TODO: make sure you do not enter duplicate user email
+      // only insert users if the user doesn't exist in the database
+      const singleUser = await usersCollection.findOne({ email: user?.email });
+
+      if (singleUser?.email) {
+        const message = `${singleUser?.email} already exists`;
+
+        return res.send({ isUserExist: true, message });
+      }
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    //Get user role by email
     app.get("/users/role/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const user = await usersCollection.findOne(query);
       res.send({ role: user?.role });
-    });
-
-    app.post("/users", async (req, res) => {
-      const user = req.body;
-      console.log(user);
-      // TODO: make sure you do not enter duplicate user email
-      // only insert users if the user doesn't exist in the database
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
     });
 
     app.delete("/users/:id", async (req, res) => {
@@ -239,6 +278,7 @@ async function run() {
       res.send(user);
     });
 
+    //Get product categories api with filter(name field only)
     app.get("/productCategories", async (req, res) => {
       const query = {};
       const result = await productCategoriesCollection
@@ -247,6 +287,7 @@ async function run() {
         .toArray();
       res.send(result);
     });
+
   } finally {
   }
 }
